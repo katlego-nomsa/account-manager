@@ -1,0 +1,1024 @@
+import * as readline from "readline";
+
+// ==========================================
+// BANKING SYSTEM - TYPESCRIPT
+// ==========================================
+
+
+// ==========================================
+// INTERFACES
+// ==========================================
+
+interface Transaction {
+    type: string;
+    amount: number;
+    dateTime: Date;
+    status: string;
+    reason: string | null;
+}
+
+interface Account {
+    accountNumber: string;
+    name: string;
+    surname: string;
+    email: string;
+    phoneNumber: string;
+    idNumber: string;
+    pin: string;
+    balance: number;
+    transactions: Transaction[];
+}
+
+
+// ==========================================
+// ACCOUNT DATA
+// ==========================================
+
+let accounts: Account[] = [
+
+    {
+        accountNumber: "1001",
+        name: "Alice",
+        surname: "Smith",
+        email: "alice@email.com",
+        phoneNumber: "0711111111",
+        idNumber: "9001010000000",
+        pin: "1234",
+        balance: 5000,
+        transactions: []
+    },
+
+    {
+        accountNumber: "1002",
+        name: "Bob",
+        surname: "Jones",
+        email: "bob@email.com",
+        phoneNumber: "0722222222",
+        idNumber: "9002020000000",
+        pin: "5678",
+        balance: 3000,
+        transactions: []
+    }
+];
+
+
+// ==========================================
+// READLINE SETUP
+// ==========================================
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+
+// ==========================================
+// INPUT FUNCTION
+// ==========================================
+
+function askQuestion(question: string): Promise<string> {
+
+    return new Promise((resolve) => {
+
+        rl.question(question, (answer: string) => {
+
+            resolve(answer.trim());
+
+        });
+
+    });
+}
+
+
+// ==========================================
+// FUNCTION 1: CHECK BALANCE
+// ==========================================
+
+function checkBalance(account: Account): number {
+
+    return account.balance;
+}
+
+
+// ==========================================
+// FUNCTION 2: RECORD TRANSACTION
+// ==========================================
+
+function recordTransaction(
+    account: Account,
+    type: string,
+    amount: number,
+    status: string,
+    reason: string | null
+): void {
+
+    let transaction: Transaction = {
+
+        type: type,
+        amount: amount,
+        dateTime: new Date(),
+        status: status,
+        reason: reason
+    };
+
+    account.transactions.push(transaction);
+}
+
+
+// ==========================================
+// FUNCTION 3: CALCULATE AVERAGE TRANSACTION
+// ==========================================
+
+function calculateAverageTransaction(
+    account: Account
+): number {
+
+    let total: number = 0;
+    let transactionCount: number = 0;
+
+    for (
+        let i: number = 0;
+        i < account.transactions.length;
+        i++
+    ) {
+
+        let transaction: Transaction =
+            account.transactions[i];
+
+        if (transaction.status === "Successful") {
+
+            total =
+                total + transaction.amount;
+
+            transactionCount++;
+        }
+    }
+
+    if (transactionCount === 0) {
+
+        return 0;
+    }
+
+    return total / transactionCount;
+}
+
+
+// ==========================================
+// FUNCTION 4: CHECK RAPID WITHDRAWALS
+// ==========================================
+
+function checkRapidWithdrawals(
+    account: Account
+): boolean {
+
+    let currentTime: Date = new Date();
+
+    let withdrawalCount: number = 0;
+
+    for (
+        let i: number = 0;
+        i < account.transactions.length;
+        i++
+    ) {
+
+        let transaction: Transaction =
+            account.transactions[i];
+
+        if (
+            transaction.type === "Withdrawal" &&
+            transaction.status === "Successful"
+        ) {
+
+            let timeDifference: number =
+                (
+                    currentTime.getTime() -
+                    transaction.dateTime.getTime()
+                ) / 1000;
+
+            if (timeDifference <= 10) {
+
+                withdrawalCount++;
+            }
+        }
+    }
+
+    if (withdrawalCount > 3) {
+
+        return false;
+    }
+
+    return true;
+}
+
+
+// ==========================================
+// FUNCTION 5: CHECK UNUSUAL SPENDING
+// ==========================================
+
+function checkUnusualSpending(
+    account: Account,
+    amount: number
+): boolean {
+
+    let averageAmount: number =
+        calculateAverageTransaction(account);
+
+    if (averageAmount === 0) {
+
+        return true;
+    }
+
+    if (amount > (5 * averageAmount)) {
+
+        return false;
+    }
+
+    return true;
+}
+
+
+// ==========================================
+// FUNCTION 6: DEPOSIT MONEY
+// ==========================================
+
+async function depositMoney(
+    account: Account
+): Promise<void> {
+
+    let input: string =
+        await askQuestion(
+            "Enter deposit amount: R"
+        );
+
+    let amount: number =
+        Number(input);
+
+    if (
+        amount <= 0 ||
+        isNaN(amount)
+    ) {
+
+        console.log("Invalid Amount");
+        return;
+    }
+
+    account.balance =
+        account.balance + amount;
+
+    recordTransaction(
+        account,
+        "Deposit",
+        amount,
+        "Successful",
+        null
+    );
+
+    console.log("\nDeposit Successful");
+
+    console.log(
+        "Updated Balance: R" +
+        checkBalance(account)
+    );
+}
+
+
+// ==========================================
+// FUNCTION 7: WITHDRAW MONEY
+// ==========================================
+
+async function withdrawMoney(
+    account: Account
+): Promise<void> {
+
+    let input: string =
+        await askQuestion(
+            "Enter withdrawal amount: R"
+        );
+
+    let amount: number =
+        Number(input);
+
+
+    // ======================================
+    // VALIDATE AMOUNT
+    // ======================================
+
+    if (
+        amount <= 0 ||
+        isNaN(amount)
+    ) {
+
+        console.log("Invalid Amount");
+        return;
+    }
+
+
+    // ======================================
+    // CHECK BALANCE
+    // ======================================
+
+    if (
+        amount >
+        checkBalance(account)
+    ) {
+
+        console.log(
+            "\nInsufficient Funds"
+        );
+
+        recordTransaction(
+            account,
+            "Withdrawal",
+            amount,
+            "Blocked",
+            "Insufficient Funds"
+        );
+
+        return;
+    }
+
+
+    // ======================================
+    // CHECK RAPID WITHDRAWALS
+    // ======================================
+
+    if (
+        !checkRapidWithdrawals(account)
+    ) {
+
+        console.log(
+            "\nTransaction Blocked — Too Many Withdrawals"
+        );
+
+        recordTransaction(
+            account,
+            "Withdrawal",
+            amount,
+            "Blocked",
+            "Too Many Withdrawals"
+        );
+
+        return;
+    }
+
+
+    // ======================================
+    // CHECK UNUSUAL SPENDING
+    // ======================================
+
+    if (
+        !checkUnusualSpending(
+            account,
+            amount
+        )
+    ) {
+
+        console.log(
+            "\nTransaction Blocked — Suspicious Activity"
+        );
+
+        recordTransaction(
+            account,
+            "Withdrawal",
+            amount,
+            "Blocked",
+            "Suspicious Activity"
+        );
+
+        return;
+    }
+
+
+    // ======================================
+    // APPROVE WITHDRAWAL
+    // ======================================
+
+    account.balance =
+        account.balance - amount;
+
+    recordTransaction(
+        account,
+        "Withdrawal",
+        amount,
+        "Successful",
+        null
+    );
+
+    console.log(
+        "\nWithdrawal Successful"
+    );
+
+    console.log(
+        "Updated Balance: R" +
+        checkBalance(account)
+    );
+}
+
+
+// ==========================================
+// FUNCTION 8: TRANSFER MONEY
+// ==========================================
+
+async function transferMoney(
+    senderAccount: Account
+): Promise<void> {
+
+    let recipientAccountNumber: string =
+        await askQuestion(
+            "Enter recipient account number: "
+        );
+
+    let recipientAccount: Account | null =
+        null;
+
+
+    // ======================================
+    // FIND RECIPIENT ACCOUNT
+    // ======================================
+
+    for (
+        let i: number = 0;
+        i < accounts.length;
+        i++
+    ) {
+
+        if (
+            accounts[i].accountNumber ===
+            recipientAccountNumber
+        ) {
+
+            recipientAccount =
+                accounts[i];
+
+            break;
+        }
+    }
+
+
+    // ======================================
+    // CHECK RECIPIENT
+    // ======================================
+
+    if (
+        recipientAccount === null
+    ) {
+
+        console.log(
+            "\nRecipient Account Not Found"
+        );
+
+        return;
+    }
+
+
+    // ======================================
+    // PREVENT TRANSFER TO SAME ACCOUNT
+    // ======================================
+
+    if (
+        recipientAccount.accountNumber ===
+        senderAccount.accountNumber
+    ) {
+
+        console.log(
+            "\nYou cannot transfer money to yourself"
+        );
+
+        return;
+    }
+
+
+    // ======================================
+    // ENTER AMOUNT
+    // ======================================
+
+    let input: string =
+        await askQuestion(
+            "Enter transfer amount: R"
+        );
+
+    let amount: number =
+        Number(input);
+
+
+    if (
+        amount <= 0 ||
+        isNaN(amount)
+    ) {
+
+        console.log("Invalid Amount");
+        return;
+    }
+
+
+    // ======================================
+    // CHECK SENDER BALANCE
+    // ======================================
+
+    if (
+        amount >
+        checkBalance(senderAccount)
+    ) {
+
+        console.log(
+            "\nInsufficient Funds"
+        );
+
+        recordTransaction(
+            senderAccount,
+            "Transfer",
+            amount,
+            "Blocked",
+            "Insufficient Funds"
+        );
+
+        return;
+    }
+
+
+    // ======================================
+    // CHECK UNUSUAL SPENDING
+    // ======================================
+
+    if (
+        !checkUnusualSpending(
+            senderAccount,
+            amount
+        )
+    ) {
+
+        console.log(
+            "\nTransaction Blocked — Suspicious Activity"
+        );
+
+        recordTransaction(
+            senderAccount,
+            "Transfer",
+            amount,
+            "Blocked",
+            "Suspicious Activity"
+        );
+
+        return;
+    }
+
+
+    // ======================================
+    // APPROVE TRANSFER
+    // ======================================
+
+    senderAccount.balance =
+        senderAccount.balance - amount;
+
+    recipientAccount.balance =
+        recipientAccount.balance + amount;
+
+
+    // ======================================
+    // RECORD SENDER TRANSACTION
+    // ======================================
+
+    recordTransaction(
+        senderAccount,
+        "Transfer",
+        amount,
+        "Successful",
+        null
+    );
+
+
+    // ======================================
+    // RECORD RECIPIENT TRANSACTION
+    // ======================================
+
+    recordTransaction(
+        recipientAccount,
+        "Transfer Received",
+        amount,
+        "Successful",
+        null
+    );
+
+
+    console.log(
+        "\nTransfer Successful"
+    );
+
+    console.log(
+        "Updated Balance: R" +
+        checkBalance(senderAccount)
+    );
+}
+
+
+// ==========================================
+// FUNCTION 9: FIND ACCOUNT
+// ==========================================
+
+function findAccount(
+    accountNumber: string
+): Account | null {
+
+    for (
+        let i: number = 0;
+        i < accounts.length;
+        i++
+    ) {
+
+        if (
+            accounts[i].accountNumber ===
+            accountNumber
+        ) {
+
+            return accounts[i];
+        }
+    }
+
+    return null;
+}
+
+
+// ==========================================
+// FUNCTION 10: SIGN UP
+// ==========================================
+
+async function signUp(): Promise<Account | null> {
+
+    let accountNumber: string =
+        await askQuestion(
+            "\nEnter your bank account number: "
+        );
+
+    let currentAccount: Account | null =
+        findAccount(accountNumber);
+
+
+    // ======================================
+    // CHECK ACCOUNT
+    // ======================================
+
+    if (
+        currentAccount === null
+    ) {
+
+        console.log(
+            "\nAccount Not Found"
+        );
+
+        return null;
+    }
+
+
+    // ======================================
+    // DISPLAY INFORMATION
+    // ======================================
+
+    console.log(
+        "\nAccount information found."
+    );
+
+    console.log(
+        "Name: " +
+        currentAccount.name
+    );
+
+    console.log(
+        "Surname: " +
+        currentAccount.surname
+    );
+
+    console.log(
+        "Email: " +
+        currentAccount.email
+    );
+
+    console.log(
+        "Phone: " +
+        currentAccount.phoneNumber
+    );
+
+
+    // ======================================
+    // ID VERIFICATION
+    // ======================================
+
+    let idNumber: string =
+        await askQuestion(
+            "\nEnter your ID number: "
+        );
+
+
+    if (
+        currentAccount.idNumber !==
+        idNumber
+    ) {
+
+        console.log(
+            "\nRegistration Failed"
+        );
+
+        return null;
+    }
+
+
+    // ======================================
+    // CONFIRM INFORMATION
+    // ======================================
+
+    let confirmation: string =
+        await askQuestion(
+            "\nIs this information correct?\n" +
+            "1. Yes\n" +
+            "2. No\n" +
+            "Choose: "
+        );
+
+
+    if (
+        confirmation === "2"
+    ) {
+
+        console.log(
+            "\nRegistration Cancelled"
+        );
+
+        return null;
+    }
+
+
+    // ======================================
+    // CREATE PIN
+    // ======================================
+
+    let pin: string =
+        await askQuestion(
+            "\nCreate your PIN: "
+        );
+
+    let confirmPin: string =
+        await askQuestion(
+            "Enter your PIN again: "
+        );
+
+
+    while (
+        pin !== confirmPin
+    ) {
+
+        console.log(
+            "\nPINs Do Not Match"
+        );
+
+        confirmPin =
+            await askQuestion(
+                "Enter your PIN again: "
+            );
+    }
+
+
+    currentAccount.pin =
+        pin;
+
+    console.log(
+        "\nRegistration Successful"
+    );
+
+    return currentAccount;
+}
+
+
+// ==========================================
+// FUNCTION 11: LOGIN
+// ==========================================
+
+async function login(): Promise<Account | null> {
+
+    let accountNumber: string =
+        await askQuestion(
+            "\nEnter your bank account number: "
+        );
+
+    let currentAccount: Account | null =
+        findAccount(accountNumber);
+
+
+    if (
+        currentAccount === null
+    ) {
+
+        console.log(
+            "\nAccount Not Found"
+        );
+
+        return null;
+    }
+
+
+    let pin: string =
+        await askQuestion(
+            "Enter your PIN: "
+        );
+
+
+    if (
+        currentAccount.pin !==
+        pin
+    ) {
+
+        console.log(
+            "\nAccess Denied"
+        );
+
+        return null;
+    }
+
+
+    console.log(
+        "\nLogin Successful"
+    );
+
+    return currentAccount;
+}
+
+
+// ==========================================
+// FUNCTION 12: TRANSACTION MENU
+// ==========================================
+
+async function transactionMenu(
+    currentAccount: Account
+): Promise<void> {
+
+    console.log(
+        "\n================================"
+    );
+
+    console.log(
+        "Welcome " +
+        currentAccount.name
+    );
+
+    console.log(
+        "Current Balance: R" +
+        checkBalance(currentAccount)
+    );
+
+    console.log(
+        "================================"
+    );
+
+
+    let transactionChoice: string =
+        await askQuestion(
+            "\nChoose a transaction:\n" +
+            "1. Deposit\n" +
+            "2. Withdrawal\n" +
+            "3. Transfer\n" +
+            "4. Exit\n" +
+            "Choose: "
+        );
+
+
+    if (
+        transactionChoice === "1"
+    ) {
+
+        await depositMoney(
+            currentAccount
+        );
+
+    }
+
+    else if (
+        transactionChoice === "2"
+    ) {
+
+        await withdrawMoney(
+            currentAccount
+        );
+
+    }
+
+    else if (
+        transactionChoice === "3"
+    ) {
+
+        await transferMoney(
+            currentAccount
+        );
+
+    }
+
+    else if (
+        transactionChoice === "4"
+    ) {
+
+        console.log(
+            "\nThank you for using the Banking System."
+        );
+
+        return;
+    }
+
+    else {
+
+        console.log(
+            "\nInvalid Transaction Choice"
+        );
+    }
+}
+
+
+// ==========================================
+// FUNCTION 13: MAIN
+// ==========================================
+
+async function main(): Promise<void> {
+
+    console.log(
+        "================================"
+    );
+
+    console.log(
+        "        BANKING SYSTEM"
+    );
+
+    console.log(
+        "================================"
+    );
+
+
+    // ======================================
+    // START
+    // ======================================
+
+    let choice: string =
+        await askQuestion(
+            "\nDid you open an account?\n" +
+            "1. Yes\n" +
+            "2. No\n" +
+            "Choose: "
+        );
+
+
+    // ======================================
+    // SIGN UP
+    // ======================================
+
+    if (
+        choice === "2"
+    ) {
+
+        let registeredAccount: Account | null =
+            await signUp();
+
+
+        if (
+            registeredAccount === null
+        ) {
+
+            rl.close();
+            return;
+        }
+    }
+
+
+    // ======================================
+    // LOGIN
+    // ======================================
+
+    let currentAccount: Account | null =
+        await login();
+
+
+    if (
+        currentAccount === null
+    ) {
+
+        rl.close();
+        return;
+    }
+
+
+    // ======================================
+    // TRANSACTION
+    // ======================================
+
+    await transactionMenu(
+        currentAccount
+    );
+
+
+    // ======================================
+    // CLOSE TERMINAL INPUT
+    // ======================================
+
+    rl.close();
+}
+
+
+// ==========================================
+// START PROGRAM
+// ==========================================
+
+main();
